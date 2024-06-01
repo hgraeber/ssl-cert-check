@@ -17,6 +17,7 @@ PROGRAMVERSION=4.14
 #  - Fix '-f', '-c', und '-d' options without '-s', but HOST environment
 #    variable defined - Herbert Graeber
 #  - Allow process substitution for '-s' option -- Herbert Graeber
+#  - Relax with space handling in server files -- Herbert Graeber
 #
 # Version 4.14
 #  - Fixed HOST / PORT discovery @mhow2
@@ -914,20 +915,21 @@ fi
 if [ -n "${SERVERFILE}" ]; then
     print_heading
 
-    IFS=$'\n'
-    for LINE in $(grep -E -v '(^#|^$)' "${SERVERFILE}")
+    grep -E -v '(^#|^[[:space:]]*$)' "${SERVERFILE}" | while read HOST PORT
     do
-        HOST=${LINE%% *}
-        PORT=${LINE##* }
-        IFS=" "
         if [ "$PORT" = "FILE" ]; then
             check_file_status "${HOST}" "FILE" "${HOST}"
         else
             check_server_status "${HOST}" "${PORT}"
         fi
     done
-    IFS="${OLDIFS}"
-    print_summary
+    if [ ${PIPESTATUS[0]} != 0 ]
+    then
+        echo "Error opening ${SERVERFILE}"
+    else
+        print_summary
+    fi
+
 ### Check to see if the certificate in CERTFILE is about to expire
 elif [ -n "${CERTFILE}" ]; then
     print_heading
